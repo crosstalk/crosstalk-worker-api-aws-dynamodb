@@ -15,7 +15,7 @@ crosstalk-worker-api-aws-dynamodb
 
 ## crosstalk.emit
 
-[~crosstalk.api.aws.signature.version4](/crosstalk/crosstalk-worker-api-aws-signature-version4/wiki/api.aws.signature.version2) - Requests an AWS Version 4 Signature to sign API requests with
+[~crosstalk.api.aws.signature.version4](/crosstalk/crosstalk-worker-api-aws-signature-version4/wiki/api.aws.signature.version4) - Requests an AWS Version 4 Signature to sign API requests with
 
 ## http in
 
