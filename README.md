@@ -3,6 +3,12 @@ crosstalk-worker-api-aws-dynamodb
 
 `crosstalk-worker-api-aws-dynamodb` is a Crosstalk worker for interacting with AWS DynamoDB API
 
+## Configuration
+
+```json
+{}
+```
+
 ## crosstalk.on
 
 [api.aws.dynamodb.deleteItem@v1](/crosstalk/crosstalk-worker-api-aws-dynamodb/wiki/api.aws.dynamodb.deleteItem@v1) - Delete item
