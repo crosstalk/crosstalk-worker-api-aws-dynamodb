@@ -1,0 +1,25 @@
+{
+  "name": "crosstalk-worker-api-aws-dynamodb",
+  "version": "1.0.1",
+  "description": "Crosstalk Worker for the AWS DynamoDB",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:crosstalk/crosstalk-worker-api-aws-dynamodb.git"
+  },
+  "keywords": [
+    "aws",
+    "dynamodb",
+    "crosstalk",
+    "worker"
+  ],
+  "author": "Crosstalk Systems Inc. <developers@crxtalk.com>",
+  "maintainers": [
+    "Tristan Slominski <tristan.slominski@gmail.com>"
+  ],
+  "crosstalk": {
+    "type": "worker"
+  },
+  "license": "MIT",
+  "private": true
+}
