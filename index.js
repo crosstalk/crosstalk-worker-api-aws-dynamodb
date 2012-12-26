@@ -5,7 +5,8 @@
  */
 
 var async = require( 'async' ),
-    https = require( 'https' );
+    https = require( 'https' ),
+    logger = require( 'logger' );
 
 var CONTENT_TYPE = "application/x-amz-json-1.0",
     HOST_PREFIX = "dynamodb.",
@@ -24,6 +25,82 @@ var attachSignatureToRequest = function attachSignatureToRequest ( dataBag, call
   return callback( null, dataBag );
 
 }; // attachSignatureToRequest
+
+var batchWriteItem = function batchWriteItem ( params, callback ) {
+
+  callback = callback || function () {}; // req-reply pattern is optional
+
+  //
+  // required params
+  //
+  var awsAccessKeyId = params.awsAccessKeyId,
+      region = params.region,
+      requestItems = params.requestItems,
+      secretAccessKey = params.secretAccessKey;
+
+  if ( ! awsAccessKeyId ) return callback( { message : "missing awsAccessKeyId" } ); 
+  if ( ! region ) return callback( { message : "missing region" } );
+  if ( ! requestItems ) return callback( { message : "missing requestItems" } );
+  if ( ! secretAccessKey ) return callback( { message : "missing secretAccessKey" } );
+
+  var request = {
+    RequestItems : {}
+  };
+
+  Object.keys( requestItems ).forEach( function ( tableName ) {
+
+    request.RequestItems[ tableName ] = [];
+
+    requestItems[ tableName ].forEach( function ( _request ) {
+
+      if ( _request.putRequest ) {
+
+        request.RequestItems[ tableName ].push( {
+          PutRequest : {
+            Item : toAwsTypedJson( _request.putRequest.item ) 
+          }
+        });
+
+      } else if ( _request.deleteRequest ) {
+
+        var key = {};
+
+        key.HashKeyElement = _request.deleteRequest.key.hashKeyElement;
+        if ( _request.deleteRequest.key.rangeKeyElement ) {
+          key.RangeKeyElement = _request.deleteRequest.key.rangeKeyElement;
+        }
+
+        request.RequestItems[ tableName ].push( {
+          DeleteRequest : {
+            Key : toAwsTypedJson( key )
+          }
+        });
+
+      } // else if ( _request.deleteRequest )
+
+    }); // requesItems[ tableName ].forEach
+
+  }); // Object.keys( requestItems ).forEach
+
+  var requestHeaders = constructRequestHeaders( "BatchWriteItem", region );
+
+  var body = JSON.stringify( request );
+
+  logger.log( body );
+
+  requestHeaders[ 'content-length' ] = Buffer.byteLength( body );
+
+  return executeAction({
+    actionType : "batch",
+    awsAccessKeyId : awsAccessKeyId,
+    body : body,
+    queryString : "",
+    region : region,
+    requestHeaders : requestHeaders,
+    secretAccessKey : secretAccessKey
+  }, callback );
+
+}; // batchWriteItem
 
 var constructRequestHeaders = function constructRequestHeaders ( action, region ) {
 
@@ -297,6 +374,77 @@ var parseResponse = function parseResponse ( dataBag, callback ) {
     var parsedKey = key[ 0 ].toLowerCase() + key.slice( 1 );
     parsedResponse[ parsedKey ] = fromAwsTypedJson( response[ key ] );
 
+    if ( dataBag.actionType === 'batch' ) {
+
+      if ( parsedKey === 'responses' ) {
+
+        // process metadata for each table
+        Object.keys( parsedResponse.responses ).forEach( function ( table ) {
+
+          var consumedCapacityUnits = 
+             parsedResponse.responses[ table ].ConsumedCapacityUnits;
+          delete parsedResponse.responses[ table ];
+          parsedResponse.responses[ table ] = {
+            consumedCapacityUnits : consumedCapacityUnits
+          };
+
+        }); // Object.keys( parsedResponse.responses )
+
+      } // if ( parsedKey === 'responses' )
+
+      if ( parsedKey === 'unprocessedItems' ) {
+
+        var unprocessedItems = {};
+
+        // process metadata for each table
+        Object.keys( parsedResponse.unprocessedItems ).forEach( 
+           function ( tableKey ) {
+
+          var table = parsedResponse.unprocessedItems[ tableKey ];
+
+          unprocessedItems[ tableKey ] = [];
+
+          table.forEach( function ( unprocessedRequest ) {
+
+            var request = {};
+
+            if ( unprocessedRequest.PutRequest ) {
+
+              request.putRequest = {
+                item : fromAwsTypedJson( unprocessedRequest.PutRequest.Item )
+              };
+
+            } else if ( unprocessedRequest.DeleteRequest ) {
+
+              var key = {};
+
+              key.hashKeyElement = fromAwsTypedJson( unprocessedRequest
+                 .DeleteRequest.Key.HashKeyElement );
+
+              if ( unprocessedRequest.DeleteRequest.Key.RangeKeyElement ) {
+                
+                key.rangeKeyElement = fromAwsTypedJson( unprocessedRequest
+                   .DeleteRequest.Key.RangeKeyElement );
+
+              } // if ( unprocessedRequest.DeleteRequest.Key.RangeKeyElement )
+
+              request.deleteRequest = { key : key };
+
+            } // else if ( unprocessedRequest.DeleteRequest )
+
+            unprocessedItems[ tableKey ].push( request );
+
+          }); // table.forEach
+
+        }); // Object.keys( parsedResponse.unprocessedItems )
+
+        delete parsedResponse.unprocessedItems;
+        parsedResponse.unprocessedItems = unprocessedItems;
+
+      } // if ( parsedKey === 'unprocessedItems' )
+
+    } // if ( dataBag.actionType === 'batch' )
+
   }); // Object.keys( response ).forEach
 
   if ( dataBag.statusCode > 299 ) {
@@ -469,6 +617,9 @@ var query = function query ( params, callback ) {
 
 }; // query
 
+//
+// binary values not supported
+//
 var toAwsTypedJson = function toAwsTypedJson( value ) {
 
   if ( typeof( value ) === "number" ) {
@@ -494,6 +645,7 @@ var toAwsTypedJson = function toAwsTypedJson( value ) {
 
 }; // toAwsTypedJson
 
+crosstalk.on( 'api.aws.dynamodb.batchWriteItem@v1', 'public', batchWriteItem );
 crosstalk.on( 'api.aws.dynamodb.deleteItem@v1', 'public', deleteItem );
 crosstalk.on( 'api.aws.dynamodb.getItem@v1', 'public', getItem );
 crosstalk.on( 'api.aws.dynamodb.putItem@v1', 'public', putItem );
