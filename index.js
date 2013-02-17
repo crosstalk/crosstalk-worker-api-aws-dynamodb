@@ -598,7 +598,9 @@ var query = function query ( params, callback ) {
     } // if ( rangeKeyCondition.attributeValueList )
 
   } // if ( rangeKeyCondition )
-  if ( scanIndexForward ) request[ 'ScanIndexForward' ] = scanIndexForward;
+  if ( typeof( scanIndexForward ) != 'undefined' ) {
+    request[ 'ScanIndexForward' ] = '' + scanIndexForward;
+  }
 
   var requestHeaders = constructRequestHeaders( "Query", region );
 
