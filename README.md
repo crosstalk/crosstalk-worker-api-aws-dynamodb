@@ -3,6 +3,8 @@ crosstalk-worker-api-aws-dynamodb
 
 `crosstalk-worker-api-aws-dynamodb` is a Crosstalk worker for interacting with AWS DynamoDB API
 
+_Click on links below for detailed documentation._
+
 ## Configuration
 
 ```json
